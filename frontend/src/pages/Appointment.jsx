@@ -6,7 +6,7 @@ import RelatedDoctors from "../components/RelatedDoctors";
 
 const Appointment = () => {
   const { docId } = useParams();
-  const { currencySymbol, user } = useContext(AppContext);
+  const { currencySymbol, user, doctors, bookAppointment } = useContext(AppContext);
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -22,65 +22,41 @@ const Appointment = () => {
       setLoading(true);
       setError(null);
 
-      // Define static doctors data
-      const staticDoctors = [
-        {
-          _id: 'doc1',
-          name: "Dr. John Smith",
-          speciality: "General Physician",
-          experience: "8+ years",
-          fees: 100,
-          about: "Experienced general physician with expertise in primary care and preventive medicine.",
-          image: assets.doc1,
-          degree: "MBBS, MD"
-        },
-        {
-          _id: 'doc2',
-          name: "Dr. Sarah Wilson",
-          speciality: "Pediatrician",
-          experience: "6+ years",
-          fees: 120,
-          about: "Dedicated pediatrician specializing in child healthcare and development.",
-          image: assets.doc2,
-          degree: "MBBS, MD Pediatrics"
-        },
-        {
-          _id: 'doc3',
-          name: "Dr. Michael Brown",
-          speciality: "Dermatologist",
-          experience: "10+ years",
-          fees: 150,
-          about: "Expert dermatologist specializing in skin conditions and cosmetic procedures.",
-          image: assets.doc3,
-          degree: "MBBS, MD Dermatology"
-        }
-      ];
-
-      // First try to get from static data
-      const staticDoctor = staticDoctors.find(d => d._id === docId);
-      if (staticDoctor) {
-        console.log('Using static doctor data:', staticDoctor);
-        setDocInfo(staticDoctor);
+      // First try to get from context doctors data
+      const contextDoctor = doctors.find(d => d._id === docId);
+      if (contextDoctor) {
+        console.log('Using context doctor data:', contextDoctor);
+        setDocInfo(contextDoctor);
         setLoading(false);
         return;
       }
 
-      // If not in static data, try API
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/${docId}`);
-      const data = await response.json();
-      
-      if (response.ok && data) {
-        console.log('Fetched doctor data:', data);
-        const doctorData = {
-          ...data,
-          name: data.user?.name || data.name,
-          image: data.user?.photo || assets.doc1
-        };
-        setDocInfo(doctorData);
-      } else {
-        console.error('Failed to fetch doctor:', data.message);
-        setError('Doctor not found');
+      // Only try API if docId looks like a valid ObjectId (24 hex characters)
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(docId);
+      if (isValidObjectId) {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/doctors/${docId}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Fetched doctor data from API:', data);
+            const doctorData = {
+              ...data,
+              name: data.user?.name || data.name,
+              image: data.user?.photo || assets.doc1
+            };
+            setDocInfo(doctorData);
+            setLoading(false);
+            return;
+          }
+        } catch (apiError) {
+          console.log('API call failed, doctor not found in API:', apiError);
+        }
       }
+
+      // If we reach here, doctor not found anywhere
+      console.error('Doctor not found with ID:', docId);
+      setError('Doctor not found');
     } catch (error) {
       console.error('Error fetching doctor:', error);
       setError('Error loading doctor information');
@@ -138,11 +114,11 @@ const Appointment = () => {
   }
 
   useEffect(() => {
-    if (docId) {
+    if (docId && doctors.length > 0) {
       console.log('Fetching doctor with ID:', docId);
       fetchDocInfo();
     }
-  }, [docId]);
+  }, [docId, doctors]);
 
   useEffect(() => {
     if (docInfo) {
@@ -252,17 +228,30 @@ const Appointment = () => {
                 }
                 
                 const selectedDate = selectedSlot.datetime.toISOString().split('T')[0];
+
+                // Check if this is a static doctor (IDs starting with 'doc')
+                if (docId.startsWith('doc')) {
+                  // Handle static doctor appointment booking
+                  const appointmentData = {
+                    doctorId: docId,
+                    doctorName: docInfo.name,
+                    date: selectedDate,
+                    time: slotTime,
+                    type: 'General Consultation'
+                  };
+
+                  const newAppointment = bookAppointment(appointmentData);
+                  alert('Appointment booked successfully!');
+                  navigate('/my-appointments');
+                  return;
+                }
+
+                // Handle real doctor appointment booking via API
                 const token = localStorage.getItem('token');
                 
                 if (!token) {
                   alert('Please login to book an appointment');
                   navigate('/login');
-                  return;
-                }
-
-                // Check if this is a static doctor (IDs starting with 'doc')
-                if (docId.startsWith('doc')) {
-                  alert('Demo mode: Booking is only available with registered doctors');
                   return;
                 }
 

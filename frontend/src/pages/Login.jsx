@@ -4,7 +4,7 @@ import { AppContext } from "../context/AppContext";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { user, setUser } = useContext(AppContext);
+  const { user, setUser, loginPatient } = useContext(AppContext);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -26,37 +26,55 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const endpoint = state === 'Sign Up' ? '/api/auth/register' : '/api/auth/login';
-      const payload = state === 'Sign Up' 
-        ? { name, email, password }
-        : { email, password };
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
-      }
-
-      if (data.success && data.token && data.user) {
-        // Save token to localStorage
-        localStorage.setItem('token', data.token);
-        // Update user context with complete user data
-        setUser(data.user);
-        // Redirect to home page
+      if (state === 'Sign Up') {
+        // For demo purposes, create a new patient account
+        const newPatient = {
+          id: 'patient_' + Date.now(),
+          name: name,
+          email: email,
+          phone: '+1234567890',
+          address: '123 Demo Street, Demo City',
+          gender: 'Not specified',
+          dob: '1990-01-01',
+          role: 'patient'
+        };
+        setUser(newPatient);
+        localStorage.setItem('user', JSON.stringify(newPatient));
         navigate('/');
       } else {
-        throw new Error(data.message || 'Invalid response from server');
-      
-    }
-   } catch (err) {
+        // Try demo login first
+        const result = loginPatient(email, password);
+        if (result.success) {
+          navigate('/');
+        } else {
+          // If demo login fails, try API login
+          const endpoint = '/api/auth/login';
+          const payload = { email, password };
+
+          const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Invalid credentials. Try demo credentials: john@demo.com / demo123');
+          }
+
+          if (data.success && data.token && data.user) {
+            localStorage.setItem('token', data.token);
+            setUser(data.user);
+            navigate('/');
+          } else {
+            throw new Error(data.message || 'Invalid response from server');
+          }
+        }
+      }
+    } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -68,6 +86,15 @@ const Login = () => {
       <div className="flex flex-col gap-3 m-auto items-start p-8 min-w-[340px] sm:min-w-96 border rounded-xl text-zinc-600 text-sm shadow-lg">
         <p className="text-2xl font-semibold">{state === 'Sign Up' ? "Create Account" : "Login"}</p>
         <p>Please {state === 'Sign Up' ? "sign up" : "log in"} to book appointment</p>
+        
+        {state === 'Login' && (
+          <div className="w-full p-3 bg-blue-50 rounded-md text-sm">
+            <p className="font-medium text-blue-800 mb-1">Demo Credentials:</p>
+            <p className="text-blue-700">Email: john@demo.com</p>
+            <p className="text-blue-700">Password: demo123</p>
+            <p className="text-blue-600 text-xs mt-1">Or try: jane@demo.com, mike@demo.com</p>
+          </div>
+        )}
         
         {error && (
           <div className="w-full p-3 text-red-500 bg-red-50 rounded-md text-sm">

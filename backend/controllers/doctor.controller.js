@@ -1,5 +1,6 @@
 const Doctor = require('../models/Doctor');
 const Availability = require('../models/Availability');
+const mongoose = require('mongoose');
 
 // @desc    Get all doctors
 // @route   GET /api/doctors
@@ -21,7 +22,16 @@ exports.getAllDoctors = async (req, res) => {
 // @access  Public
 exports.getDoctorById = async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id)
+    const { id } = req.params;
+
+    // Check if the ID is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        message: 'Invalid doctor ID format. Please use a valid ObjectId.' 
+      });
+    }
+
+    const doctor = await Doctor.findById(id)
       .populate('user', 'name email photo')
       .populate('reviews.user', 'name photo');
 

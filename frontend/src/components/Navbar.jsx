@@ -38,9 +38,17 @@ const Navbar = () => {
         <NavLink to={"/contact"}>
           <li className="py-1">CONTACT</li>
           <hr className="border-none outline-none h-0.5 bg-primary w-3/5 m-auto hidden" />
-        </NavLink>      
+        </NavLink>
       </ul>
       <div className="flex items-center gap-4">
+        {!user && (
+          <button
+            onClick={() => navigate("/admin/login")}
+            className="bg-primary text-white px-8 py-3 rounded-full font-light hidden md:block"
+          >
+            Admin Panel
+          </button>
+        )}
         {user ? (
           <div className="flex items-center gap-2 cursor-pointer group relative">
             <img 
@@ -68,6 +76,22 @@ const Navbar = () => {
                 >
                   My Appointments
                 </p>
+                {user.isAdmin && (
+                  <p
+                    onClick={() => navigate("/admin/dashboard")}
+                    className="hover:text-black cursor-pointer text-blue-600 font-semibold"
+                  >
+                    Admin Panel
+                  </p>
+                )}
+                {user.isDoctor && (
+                  <p
+                    onClick={() => navigate("/doctor/dashboard")}
+                    className="hover:text-black cursor-pointer text-green-600 font-semibold"
+                  >
+                    Doctor Panel
+                  </p>
+                )}
                 <p
                   onClick={handleLogout}
                   className="hover:text-black cursor-pointer text-red-500"
@@ -98,6 +122,9 @@ const Navbar = () => {
             <NavLink  onClick={()=>setShowMenu(false)} to='/doctors'><p className='px-4 py-2 rounded inline-block'>ALL DOCTORS</p></NavLink>
             <NavLink onClick={()=>setShowMenu(false)} to='/about'><p className='px-4 py-2 rounded inline-block'>ABOUT</p></NavLink>
             <NavLink onClick={()=>setShowMenu(false)} to='/contact'><p className='px-4 py-2 rounded inline-block'>CONTACT</p></NavLink>
+            {!user && (
+              <NavLink onClick={()=>setShowMenu(false)} to='/admin/login'><p className='px-4 py-2 rounded inline-block text-blue-600 font-semibold'>Admin Panel</p></NavLink>
+            )}
           </ul>
         </div>
       </div>

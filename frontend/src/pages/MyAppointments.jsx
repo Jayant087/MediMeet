@@ -3,74 +3,40 @@ import { AppContext } from '../context/AppContext';
 import { assets } from "../assets/assets";
 
 const MyAppointments = () => {
-  const { user } = useContext(AppContext);
-  const [appointments, setAppointments] = useState([]);
+  const { user, getPatientAppointments, updateAppointmentStatus, doctors } = useContext(AppContext);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch appointments
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/appointments/my-appointments`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setAppointments(data);
-        } else {
-          // If API fails, use static data for demo
-          const staticAppointments = [
-            {
-              _id: 'apt1',
-              doctor: {
-                _id: 'doc1',
-                name: "Dr. John Smith",
-                speciality: "General Physician",
-                image: assets.doc1,
-                address: {
-                  line1: "123 Medical Street",
-                  line2: "Healthcare Complex, City Center"
-                }
-              },
-              appointmentDate: "2025-07-25",
-              timeSlot: "8:30 PM",
-              status: "scheduled"
-            },
-            {
-              _id: 'apt2',
-              doctor: {
-                _id: 'doc2',
-                name: "Dr. Sarah Wilson",
-                speciality: "Pediatrician",
-                image: assets.doc2,
-                address: {
-                  line1: "456 Children's Lane",
-                  line2: "Pediatric Center, West Area"
-                }
-              },
-              appointmentDate: "2025-07-26",
-              timeSlot: "10:00 AM",
-              status: "scheduled"
-            }
-          ];
-          setAppointments(staticAppointments);
-        }
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-        setError('Failed to load appointments');
-      } finally {
-        setLoading(false);
+  // Get appointments for current user
+  const userAppointments = getPatientAppointments(user?.id || '');
+  
+  // Map appointments with doctor information
+  const appointmentsWithDoctors = userAppointments.map(appointment => {
+    const doctor = doctors.find(doc => doc._id === appointment.doctorId);
+    return {
+      ...appointment,
+      doctor: doctor ? {
+        _id: doctor._id,
+        name: doctor.name,
+        speciality: doctor.speciality,
+        image: doctor.image,
+        address: doctor.address
+      } : {
+        _id: appointment.doctorId,
+        name: appointment.doctorName,
+        speciality: 'Unknown',
+        image: assets.profile_pic,
+        address: { line1: 'Address not available', line2: '' }
       }
     };
+  });
 
-    if (user) {
-      fetchAppointments();
-    }
+  // Simulate loading for better UX
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [user]);
 
   if (loading) {
@@ -89,7 +55,7 @@ const MyAppointments = () => {
     );
   }
 
-  if (!appointments || appointments.length === 0) {
+  if (!appointmentsWithDoctors || appointmentsWithDoctors.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <p className="text-gray-600">No appointments found</p>
@@ -101,7 +67,7 @@ const MyAppointments = () => {
     <div>
       <p className="pb-3 mt-12 font-medium text-zinc-700 border-b">My appointments</p>
       <div>
-        {appointments.map((appointment, index) => (
+        {appointmentsWithDoctors.map((appointment, index) => (
           <div className="grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b" key={appointment._id || index}>
             <div>
               <img 
